@@ -1,616 +1,544 @@
-local Global = (getgenv and getgenv()) or getfenv(0)
-local ReanimSettings = Global.ReanimateSettings;
-if not ReanimSettings then ReanimSettings = {}; Global.ReanimateSettings = ReanimSettings end
+local NotificationTable = {};
+local Done = true;
+local TweenService = game:GetService("TweenService");
 
--- some settings into vars so will not break when changing while reanimated
-local ExtraOptimization = ReanimSettings.ExtraOptimization or false
-local AntiSleepParts = ReanimSettings.AntiSleep or false
-local AntiVoid = ReanimSettings.AntiVoid or false
+local function CreateNormalNotificationArguments()
+	local ArgFour = {
+		Duration = 4,
 
-local isnetworkowner, sethiddenproperty, setsimulationradius
-local CF = CFrame.new
-local CA = CFrame.Angles
-local V3 = Vector3.new
-local IN = Instance.new
-local TI = table.insert
-local SUB = string.sub
+		TitleSettings = {
+			BackgroundColor3 = Color3.fromRGB(200, 200 ,200),
+			TextColor3 = Color3.fromRGB(240, 240, 240),
+			TextScaled = true,
+			TextWrapped = true,
+			TextSize = 18.000,
+			Font = Enum.Font.SourceSansBold,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextYAlignment = Enum.TextYAlignment.Center
+		},
 
-local fspawn = task.spawn
-local fdelay = task.delay
-local fwait = task.wait
+		DescriptionSettings = {
+			BackgroundColor3 = Color3.fromRGB(200, 200 ,200),
+			TextColor3 = Color3.fromRGB(240, 240, 240),
+			TextScaled = true,
+			TextWrapped = true,
+			TextSize = 14.000,
+			Font = Enum.Font.SourceSans,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextYAlignment = Enum.TextYAlignment.Top,
+		},
 
-local V3_010 = V3(0,1,0)
-local AntiSleep = CF()
+		IconSettings = {
+			BackgroundTransparency = 1,
+			BackgroundColor3 = Color3.fromRGB(255, 255, 255),				
+		},
 
-local Events = {}
-local Hats = {}
-local Offsets = {}
+		GradientSettings = {
+			GradientEnabled = true,
+			SolidColorEnabled = false,
+			SolidColor = Color3.fromRGB(0,255,255),
+			Retract = false,
+			Extend = false
+		},
 
-local Workspace = game:GetService("Workspace")
-local RunService = game:GetService("RunService")
-local Players = game:GetService("Players")
-local HttpService = game:GetService("HttpService")
-local StarterGui = game:GetService("StarterGui")
-
-local function notification(Title, Text)
-	StarterGui:SetCore("SendNotification", {
-		Title = Title or "",
-		Text = Text or "",
-		Duration = 5
-	})
-end
-
-local Stepped = RunService[ReanimSettings.NewRunServiceEvents and "PreSimulation" or "Stepped"]
-local Heartbeat = RunService[ReanimSettings.NewRunServiceEvents and "PostSimulation" or "Heartbeat"]
-
-local Camera = Workspace.CurrentCamera
-local Client = Players.LocalPlayer
-local Character, Humanoid = Client.Character, nil
-
-do -- [[ Checks ]] --
-	if not game:IsLoaded("Workspace") then
-		notification("Game Not Loaded", "Game is still loading.")
-		game.Loaded:Wait()
-	end
-	Humanoid = Character:FindFirstChildOfClass("Humanoid")
-	if (not Character) or (Character and Character.Name == "𝔾𝕖𝕝𝕒𝕥𝕖𝕜ℝ𝕒𝕨"..tostring(game.PlaceId)) then
-		notification("Error", "No Real Character found, or you are already reanimated")
-		return
-	end
-
-	if (Humanoid.Health == 0) or (Humanoid.BreakJointsOnDeath == false) then 
-		notification("Error", "Something is up with humanoid properties, or the game has patches.")
-		return
-	end
-end
-
-
-do -- [[ Functions / Data ]] --
-	isnetworkowner = isnetworkowner or function(Part)
-		return Part.ReceiveAge == 0
-	end
-	sethiddenproperty = sethiddenproperty or function(Instance, Property, Value)
-		pcall(function() 
-			Instance[Property] = Value
-		end)
-	end
-	setsimulationradius = setsimulationradius or function(Value)
-		sethiddenproperty(Client, "SimulationRadius", Value)
-	end
-
-	Global.ReanimateData = {
-		ScriptStopped = false,
-		FlingEnabled = false,
-		FlingPart = nil,
-		Connections = {},
-		HatCache = Instance.new("Folder")
+		Main = {
+			BorderColor3 = Color3.fromRGB(255, 255, 255),
+			BackgroundColor3 = Color3.fromRGB(30, 30, 30),
+			BackgroundTransparency = 0.050,
+			Rounding = true,
+			BorderSizePixel = 1
+		}
 	}
+
+	return ArgFour;
 end
 
-local FlingPart = nil
-local ReadyToAlign = false
-local NoclipStatus = false
-local WaitTime = Players.RespawnTime + 0.65
-local FallenPartsDestroyHeight = Workspace.FallenPartsDestroyHeight
-local CharDescendants = Character:GetDescendants()
-local RootPart = Character:WaitForChild("HumanoidRootPart", 15)
-local CFrameOffset = CF(RootPart.Position.X, FallenPartsDestroyHeight + 375, RootPart.Position.Z)
-local SavedCFrame = RootPart.CFrame * CF(0, 10, 0)
-local FakeRig, FakeHumanoid, FakeRoot, FakeRigDescendants;
+local function RandomName(Size)
+	local String = "";
+	local Alphabet = {"{","}","[","]","(",")","/","\\","'","\"","`","~",",",";",":",".","<",">","@","#","$","%","1","2","3","4","5","6","7","8","9","0","a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z","A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z"}
 
-if ReanimSettings.KeepCharacter and ReanimSettings.ToolFling then
-	notification("Tip", "Try to reanimate near the void, then once you claim your hats knock the bodyparts to void to increase stability!")
+	for i = 1, Size do
+		String = String .. Alphabet[math.random(#Alphabet)]
+	end
+
+	return String;
 end
 
-if ReanimSettings.ToolFling then -- [[ Tool Flinging ]] --
-	local Backpack = Client:FindFirstChildOfClass("Backpack")
-	local Tool = Backpack:FindFirstChildOfClass("Tool")
-	if Tool then
-		Tool.Parent = Character
-		Character:WaitForChild(Tool.Name)
-		FlingPart = Tool:WaitForChild("Handle", 10)
-		FlingPart.Transparency = 0.25
+local NotificationFolder = Instance.new("Folder");
 
-		local Highlight = IN("Highlight")
-		Highlight.Adornee = FlingPart
-		Highlight.FillTransparency = 0.1
-		Highlight.FillColor = Color3.fromRGB(52, 235, 195)
-		Global.ReanimateData.FlingPart = FlingPart
-		if Backpack then
-			Backpack:ClearAllChildren()
+NotificationTable.CreateNotification = function(TitleData, Text, Image, Settings)
+
+	local Duration = Settings.Duration;
+	local TitleSettings = Settings.TitleSettings;
+	local DescriptionSettings = Settings.DescriptionSettings;
+	local IconSettings = Settings.IconSettings;
+	local GradientSettings = Settings.GradientSettings;
+	local MainSettings = Settings.Main;
+	
+	if getgenv then
+		if (game:GetService("CoreGui"):FindFirstChild("RobloxGui"):FindFirstChild("NotificationFolder")) then
+			NotificationFolder = game:GetService("CoreGui"):FindFirstChild("RobloxGui"):FindFirstChild("NotificationFolder");
+		else
+			NotificationFolder.Name = "NotificationFolder"
+			NotificationFolder.Parent = game:GetService("CoreGui"):FindFirstChild("RobloxGui");
 		end
-		
-		fdelay(WaitTime+1, function()
-			FlingPart.Massless = true
-			Highlight.Parent = FlingPart
-		end)
 	else
-		notification("Warning", "Player has no tools in Backpack, tool fling will be not enabled.")
+		if (game:GetService("Players").LocalPlayer.PlayerGui:FindFirstChild("NotificationFolder")) then
+			NotificationFolder = game:GetService("Players").LocalPlayer.PlayerGui:FindFirstChild("NotificationFolder");
+		else
+			NotificationFolder.Name = "NotificationFolder"
+			NotificationFolder.Parent = game:GetService("Players").LocalPlayer.PlayerGui;
+		end
 	end
+
+	local Notification = Instance.new("ScreenGui")
+	local _Template = Instance.new("Frame")
+	local Icon = Instance.new("ImageLabel")
+	local UIAspectRatioConstraint = Instance.new("UIAspectRatioConstraint")
+	local Title = Instance.new("TextLabel")
+	local TextLabel = Instance.new("TextLabel")
+	local UICorner = Instance.new("UICorner")
+	local Frame = Instance.new("Frame")
+	local UIGradient = Instance.new("UIGradient")
+
+
+	Notification.Name = RandomName(15)
+	Notification.Parent = NotificationFolder
+	Notification.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+	Notification.Enabled = true;
+
+	_Template.Name = "_Template"
+	_Template.Parent = Notification
+	_Template.BackgroundColor3 = MainSettings.BackgroundColor3
+	_Template.BackgroundTransparency = MainSettings.BackgroundTransparency
+	_Template.BorderColor3 = MainSettings.BorderColor3
+	_Template.Position = UDim2.new(0.713929176, 0, 0.587826073, 0)
+	_Template.Size = UDim2.new(0, 270, 0, 64)
+	_Template.ZIndex = 9
+	_Template.Visible = false;
+
+	Icon.Name = "Icon"
+	Icon.Parent = _Template
+	Icon.BackgroundColor3 = IconSettings.BackgroundColor3
+	Icon.BackgroundTransparency = IconSettings.BackgroundTransparency
+	Icon.Position = UDim2.new(0.0277603213, 0, 0.182097465, 0)
+	Icon.Size = UDim2.new(0, 40, 0, 40)
+	Icon.Image = Image
+
+	UIAspectRatioConstraint.Parent = Icon
+
+	Title.Name = "Title"
+	Title.Parent = _Template
+	Title.BackgroundTransparency = 1.000
+	Title.Position = UDim2.new(0, 63, 0, 2)
+	Title.Size = UDim2.new(0, 129, 0, 21)
+	Title.Text = TitleData
+	Title.TextColor3 = TitleSettings.TextColor3
+	Title.TextScaled = TitleSettings.TextScaled
+	Title.TextSize = TitleSettings.TextSize
+	Title.TextWrapped = TitleSettings.TextWrapped
+	Title.TextXAlignment = TitleSettings.TextXAlignment
+	Title.TextYAlignment = TitleSettings.TextYAlignment
+	Title.Font = TitleSettings.Font
+	Title.BackgroundColor3 = TitleSettings.BackgroundColor3
+	Title.RichText = true
+
+	TextLabel.Parent = _Template
+	TextLabel.BackgroundColor3 = DescriptionSettings.BackgroundColor3
+	TextLabel.BackgroundTransparency = 1.000
+	TextLabel.Position = UDim2.new(0, 63, 0, 23)
+	TextLabel.Size = UDim2.new(0, 178, 0, 35)
+	TextLabel.Text = Text
+	TextLabel.TextColor3 = DescriptionSettings.TextColor3
+	TextLabel.TextScaled = DescriptionSettings.TextScaled
+	TextLabel.TextSize = DescriptionSettings.TextSize
+	TextLabel.TextWrapped = DescriptionSettings.TextWrapped
+	TextLabel.TextXAlignment = DescriptionSettings.TextXAlignment
+	TextLabel.TextYAlignment = DescriptionSettings.TextYAlignment
+	TextLabel.Font = DescriptionSettings.Font
+	TextLabel.BackgroundColor3 = DescriptionSettings.BackgroundColor3
+	TextLabel.RichText = true
+
+
+	if MainSettings.Rounding then
+		UICorner.Parent = _Template
+	end
+
+	Frame.Parent = _Template
+	Frame.BorderSizePixel = 0
+	Frame.Position = UDim2.new(0,0,1,-3)
+	Frame.Size = UDim2.new(0, 263, 0, 3)
+	Frame.Visible = false;
+
+	UIGradient.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(255, 8, 231)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(64, 0, 255))}
+	UIGradient.Parent = Frame
+
+	if GradientSettings.GradientEnabled then
+		Frame.Visible = true
+	elseif GradientSettings.SolidColor then
+		UIGradient:Destroy();
+		Frame.BackgroundColor3 = GradientSettings.SolidColor
+		Frame.Visible = true
+	end
+
+	return {_Template, Duration, GradientSettings.Retract, GradientSettings.Extend};
 end
 
-do -- [[ Improve Claiming / Disabling Things / Extra Settings. ]] --
-	local SpawnPoint = Workspace:FindFirstChildOfClass("SpawnLocation",true) and Workspace:FindFirstChildOfClass("SpawnLocation",true) or CF(0,20,0)
-	local Physics = settings()['Physics']
-	local Rendering = settings()['Rendering']
-	local WakeOffset = 0.008
-	local Cos = math.cos
+NotificationTable.InsertNotification = function(Notification, Duration, Retracting, Extending)
+	repeat game:GetService("RunService").Heartbeat:Wait() until Done;
 
-	for _, Instance in pairs(CharDescendants) do
-		if Instance:IsA("Script") or Instance:IsA("LocalScript") then
-			Instance.Disabled = true
-		elseif Instance:IsA("BasePart") then
-			Instance.RootPriority = 127
-			Instance.Massless = Instance.Parent:IsA("Accessory") and true or false
-			Instance.CastShadow = not ExtraOptimization
-		elseif Instance:IsA("Accessory") then
-			local Handle = Instance:FindFirstChild("Handle")
-			if Handle then TI(Hats, Handle) end
+	local ShowPosition = UDim2.new(1, -280, 1, -70 * #NotificationFolder:GetChildren() - 1);
+	local HidePosition = UDim2.new(1, 0, 1, 0);
+
+	Notification.Position = HidePosition;
+	Notification.Visible = true;
+
+	local TweenInfData = TweenInfo.new(0.4);
+	local TweenInfData2 = TweenInfo.new(Duration);
+
+	TweenService:Create(Notification, TweenInfData, {
+		Position = ShowPosition
+	}):Play();
+
+	if (Retracting) then
+
+		TweenService:Create(Notification.Frame, TweenInfData2, {
+			Size = UDim2.new(0, 0, 0, 3)
+		}):Play();
+	elseif (Extending) then
+		Notification.Frame.Size = UDim2.new(0, 0, 0, 3);
+
+		TweenService:Create(Notification.Frame, TweenInfData2, {
+			Size = UDim2.new(0, 263, 0, 3)
+		}):Play();
+	end
+
+	wait(TweenInfData2.Time);
+	wait(TweenInfData.Time);
+
+	Done = false
+	local Tween = TweenService:Create(Notification, TweenInfData, {
+		Position = HidePosition
+	})
+
+	Tween.Completed:Connect(function(State)
+		if State == Enum.PlaybackState.Completed then
+			Notification.Parent:Destroy();
+			Done = true
 		end
-	end
-
-	for _, Track in pairs(Humanoid:GetPlayingAnimationTracks()) do
-		Track:Stop()
-	end
-
-	Workspace.InterpolationThrottling = Enum.InterpolationThrottlingMode.Disabled
-	Workspace.Retargeting = "Disabled"
-	Client.ReplicationFocus = Workspace
-
-	sethiddenproperty(Client, "MaximumSimulationRadius", 2763000)
-	sethiddenproperty(Client, "SimulationRadius", 2763000)
-	sethiddenproperty(Humanoid, "InternalBodyScale", V3(9e9,9e9,9e9))
-	sethiddenproperty(Workspace, "SignalBehavior", "Immediate")
-	sethiddenproperty(Workspace, "StreamingMinRadius", 1/0)
-	sethiddenproperty(Workspace, "StreamingEnabled", true)
-	sethiddenproperty(Workspace, "StreamOutBehavior", Enum.StreamOutBehavior.Opportunistic)
-
-	pcall(function()	
-		Physics.PhysicsEnvironmentalThrottle = Enum.EnviromentalPhysicsThrottle.Disabled
-		Physics.AllowSleep = false
-		Physics.ThrottleAdjustTime = math.huge
-		Rendering.EagerBulkExecution = ReanimSettings.EagerBulkExecution
-		if ExtraOptimization then Rendering.QualityLevel = 2 end
 	end)
 
-	TI(Events, Stepped:Connect(function()
-		setsimulationradius(2763000)
-		if AntiSleepParts then
-			WakeOffset = 0.008 * Cos(tick()*10)
-			AntiSleep = CA(WakeOffset, 0, WakeOffset)
+	Tween:Play();
+end
+
+NotificationTable.Notify = function(...)
+	coroutine.wrap(function(...)
+		local Args = {...};
+
+		assert(#Args < 5, "Error: Too many arguments for Notify | Expected 3 : 4");
+		assert(#Args > 2, "Error: Too little arguments for Notify | Expected 3 : 4")
+
+		for Index,Argument in next, Args do
+			if Index ~= 4 then
+				Args[Index] = tostring(Argument);
+			end
 		end
 
-		if (FakeRoot and FakeHumanoid) and FakeHumanoid.MoveDirection.Magnitude < 0.1 then 
-			FakeRoot.CFrame = FakeRoot.CFrame * CF(0.004 * Cos(tick()*8), 0, 0)
+
+		if (#Args == 3) then
+			Args[4] = CreateNormalNotificationArguments();
 		end
 
-		if (FakeRoot and FakeRoot.Position.Y <= FallenPartsDestroyHeight + 60) then
-			if AntiVoid then
-				FakeRig:MoveTo(SpawnPoint.Position)
-				FakeRoot.Velocity = V3(0, 0, 0)
+		Args[5] = CreateNormalNotificationArguments();
+
+		if (type(Args[4]) ~= "table") then
+			warn("Settings table malformed, please make sure you have the exact table copied! { ARG4_INVALID_TABLE }");
+			Args[4] = CreateNormalNotificationArguments();
+		end
+
+		for Property, Value in next, Args[4] do
+			if type(Value) == "table" then
+				for SubProperty, SubValue in next, Value do
+					Args[5][Property][SubProperty] = SubValue;
+				end
 			else
-				FakeRoot.Anchored = true
-				FakeHumanoid:ChangeState(15)
+				Args[5][Property] = Value
 			end
 		end
 
-		if FlingPart then
-			FlingPart.CanCollide = false
-			FlingPart.CanTouch = false
-			FlingPart.CanQuery = false
-		end
-	end))
+
+		local NotifFrame = NotificationTable.CreateNotification(Args[1], Args[2], Args[3], Args[5]);
+
+		NotificationTable.InsertNotification(NotifFrame[1], NotifFrame[2], NotifFrame[3], NotifFrame[4]);
+	end)(...)
 end
 
-do -- [[ Rig ]] --
-	FakeRig = IN("Model")
-	local Limbs = {}
-	local Attachments = {}
-	local function CreateJoint(Name,Part0,Part1,C0,C1)
-		local Joint = IN("Motor6D")
-		Joint.Name = Name
-		Joint.Part0 = Part0
-		Joint.Part1 = Part1
-		Joint.C0 = C0
-		Joint.C1 = C1
-		Joint.Parent = Part0
+-- { Wall Notifications } --
+
+local WallNotificationFolder = Instance.new("Folder");
+
+local function CreateWallArgs()
+	local ArgThree = {
+		Duration = 5,
+
+		MainSettings = {
+			Orientation = "Middle",
+			VisibleSize = UDim2.new(0.96981132, 0, 0.947604775, 0);
+			HiddenSize  = UDim2.new(0, 0, 0.947604775, 0),
+			TweenTime 	= 0.8
+		},
+
+		TitleSettings = {
+			Enabled = true,
+			BackgroundColor3 = Color3.fromRGB(200, 200 ,200),
+			TextColor3 = Color3.fromRGB(240, 240, 240),
+			TextScaled = true,
+			TextWrapped = true,
+			TextSize = 18.000,
+			Font = Enum.Font.SourceSansBold,
+			TextXAlignment = Enum.TextXAlignment.Center,
+			TextYAlignment = Enum.TextYAlignment.Center
+		},
+
+		DescriptionSettings = {
+			BackgroundColor3 = Color3.fromRGB(200, 200 ,200),
+			TextColor3 = Color3.fromRGB(240, 240, 240),
+			TextScaled = true,
+			TextWrapped = true,
+			TextSize = 14.000,
+			Font = Enum.Font.SourceSans,
+			TextXAlignment = Enum.TextXAlignment.Center,
+			TextYAlignment = Enum.TextYAlignment.Center
+		}
+	};
+	return ArgThree;
+end
+
+NotificationTable.CreateWallNotification = function(TitleText, DescriptionText, Settings)
+
+	local Duration = Settings.Duration;
+	local TitleSettings = Settings.TitleSettings;
+	local DescriptionSettings = Settings.DescriptionSettings;
+	local MainSettings = Settings.MainSettings;
+
+	if getgenv then
+		if (game:GetService("CoreGui"):FindFirstChild("RobloxGui"):FindFirstChild("WallNotificationFolder")) then
+			WallNotificationFolder = game:GetService("CoreGui"):FindFirstChild("RobloxGui"):FindFirstChild("WallNotificationFolder");
+		else
+			WallNotificationFolder.Name = "WallNotificationFolder"
+			WallNotificationFolder.Parent = game:GetService("CoreGui"):FindFirstChild("RobloxGui");
+		end
+	else
+		if (game:GetService("Players").LocalPlayer.PlayerGui:FindFirstChild("WallNotificationFolder")) then
+			WallNotificationFolder = game:GetService("Players").LocalPlayer.PlayerGui:FindFirstChild("WallNotificationFolder");
+		else
+			WallNotificationFolder.Name = "WallNotificationFolder"
+			WallNotificationFolder.Parent = game:GetService("Players").LocalPlayer.PlayerGui;
+		end
 	end
 
-	for i = 0,18 do
-		local Attachment = IN("Attachment")
-		Attachment.Axis = V3(1,0,0)
-		Attachment.SecondaryAxis = V3(0,1,0)
-		TI(Attachments, Attachment)
+	local WallNotification = Instance.new("ScreenGui")
+	local Main = Instance.new("Frame")
+	local Title = Instance.new("TextLabel")
+	local Description = Instance.new("TextLabel")
+
+	WallNotification.Name = "Notification"
+	WallNotification.Parent = WallNotificationFolder
+	WallNotification.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+	WallNotification.Enabled = true;
+
+	Main.Name = "Main"
+	Main.Parent = WallNotification
+	Main.AnchorPoint = Vector2.new(0.5, 0.5)
+	Main.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+	Main.BackgroundTransparency = 0.200
+	Main.BorderColor3 = Color3.fromRGB(255, 255, 255)
+	Main.Position = UDim2.new(0.5, 0, 0.5, 0)
+	Main.Size = MainSettings.HiddenSize;
+
+	Title.Name = "Title"
+	Title.Parent = Main
+	Title.BackgroundTransparency = 1.000
+	Title.Position = UDim2.new(0.267834008, 0, 0.0142180091, 0)
+	Title.Size = UDim2.new(0.463035017, 0, 0.0805396363, 0)
+	Title.Text = TitleText
+	Title.TextColor3 = TitleSettings.TextColor3
+	Title.TextScaled = TitleSettings.TextScaled
+	Title.TextSize = TitleSettings.TextSize
+	Title.TextWrapped = TitleSettings.TextWrapped
+	Title.TextXAlignment = TitleSettings.TextXAlignment
+	Title.TextYAlignment = TitleSettings.TextYAlignment
+	Title.Font = TitleSettings.Font
+	Title.BackgroundColor3 = TitleSettings.BackgroundColor3
+	Title.Visible = TitleSettings.Enabled
+	Title.RichText = true
+	
+	Description.Name = "Description"
+	Description.Parent = Main
+	Description.BackgroundTransparency = 1.000
+	Description.Position = UDim2.new(0.0149156936, 0, 0.127962083, 0)
+	Description.Size = UDim2.new(0.969520092, 0, 0.830963671, 0)
+	Description.Text = DescriptionText
+	Description.TextColor3 = DescriptionSettings.TextColor3
+	Description.TextScaled = DescriptionSettings.TextScaled
+	Description.TextSize = DescriptionSettings.TextSize
+	Description.TextWrapped = DescriptionSettings.TextWrapped
+	Description.TextXAlignment = DescriptionSettings.TextXAlignment
+	Description.TextYAlignment = DescriptionSettings.TextYAlignment
+	Description.Font = DescriptionSettings.Font
+	Description.BackgroundColor3 = DescriptionSettings.BackgroundColor3
+	Description.RichText = true
+	
+	Main.Visible = false;
+	
+	return {Main, Duration, MainSettings};
+end
+
+NotificationTable.InsertWallNotification = function(Notification, Duration, SettingsTable)
+	local ShowSize = SettingsTable.VisibleSize;
+	local HiddenSize = SettingsTable.HiddenSize;
+	local PositionType = SettingsTable.Orientation;
+	local TweenInfData = TweenInfo.new(SettingsTable.TweenTime);
+		
+	if PositionType == "Top" then
+		Notification.Visible = true;
+		Notification.Size = ShowSize;
+		Notification.Position = UDim2.new(Notification.Position.X.Scale, Notification.Position.X.Offset, 0, -(Notification.Parent.AbsoluteSize.Y / 2) - 25)
+
+		TweenService:Create(Notification, TweenInfData, {
+			Position = UDim2.new(.5, 0, .5, 0)
+		}):Play()
+
+		wait(TweenInfData.Time + Duration);
+
+		TweenService:Create(Notification, TweenInfData, {
+			Position = UDim2.new(Notification.Position.X.Scale, Notification.Position.X.Offset, 0, -(Notification.Parent.AbsoluteSize.Y / 2) - 25)
+		}):Play();
+
+		wait(TweenInfData.Time);
+	elseif PositionType == "Left" then
+		Notification.Visible = true;
+		Notification.Size = ShowSize;
+		Notification.Position = UDim2.new(0, -(Notification.Parent.AbsoluteSize.X / 2), Notification.Position.Y.Scale, Notification.Position.Y.Offset)
+		
+		TweenService:Create(Notification, TweenInfData, {
+			Position = UDim2.new(.5, 0, .5, 0)
+		}):Play()
+
+		wait(TweenInfData.Time + Duration);
+
+		TweenService:Create(Notification, TweenInfData, {
+			Position = UDim2.new(0, -(Notification.Parent.AbsoluteSize.X / 2), Notification.Position.Y.Scale, Notification.Position.Y.Offset)
+		}):Play();
+
+		wait(TweenInfData.Time);
+	elseif PositionType == "Right" then 
+		Notification.Visible = true;
+		Notification.Size = ShowSize;
+		Notification.Position = UDim2.new(0, Notification.Parent.AbsoluteSize.X + Notification.AbsoluteSize.X / 2, Notification.Position.Y.Scale, Notification.Position.Y.Offset)
+		
+		TweenService:Create(Notification, TweenInfData, {
+			Position = UDim2.new(.5, 0, .5, 0)
+		}):Play()
+
+		wait(TweenInfData.Time + Duration);
+
+		TweenService:Create(Notification, TweenInfData, {
+			Position = UDim2.new(0, Notification.Parent.AbsoluteSize.X + Notification.AbsoluteSize.X / 2, Notification.Position.Y.Scale, Notification.Position.Y.Offset)
+		}):Play();
+
+		wait(TweenInfData.Time);
+		
+	elseif PositionType == "Bottom" then
+		Notification.Visible = true;
+		Notification.Size = ShowSize;
+		Notification.Position = UDim2.new(Notification.Position.X.Scale, Notification.Position.X.Offset, 0, Notification.Parent.AbsoluteSize.Y + (Notification.AbsoluteSize.Y / 2))
+		
+		TweenService:Create(Notification, TweenInfData, {
+			Position = UDim2.new(.5, 0, .5, 0)
+		}):Play()
+
+		wait(TweenInfData.Time + Duration);
+
+		TweenService:Create(Notification, TweenInfData, {
+			Position = UDim2.new(Notification.Position.X.Scale, Notification.Position.X.Offset, 0, Notification.Parent.AbsoluteSize.Y + (Notification.AbsoluteSize.Y / 2))
+		}):Play();
+
+		wait(TweenInfData.Time);
+		
+	elseif PositionType == "Middle" then
+		Notification.Visible = true;
+
+		TweenInfData = TweenInfo.new(.8);
+
+		TweenService:Create(Notification, TweenInfData, {
+			Size = ShowSize
+		}):Play();
+
+		wait(TweenInfData.Time + Duration);
+
+		TweenService:Create(Notification, TweenInfData, {
+			Size = HiddenSize
+		}):Play();
+
+		wait(TweenInfData.Time);
 	end
 
-	for i = 0,3 do
-		local Limb = IN("Part")
-		Limb.Size = V3(1, 2, 1)
-		Limb.Transparency = 1
-		Limb.BottomSurface = Enum.SurfaceType.Smooth
-		Limb.FormFactor = Enum.FormFactor.Symmetric
-		Limb.Locked = true
-		Limb.CanCollide = false
-		Limb.CastShadow = not ExtraOptimization
-		Limb.Parent = FakeRig
-		TI(Limbs, Limb)
-	end
+	Notification.Parent:Destroy();
+end
 
-	Limbs[1].Name = "Right Arm"
-	Limbs[2].Name = "Left Arm"
-	Limbs[3].Name = "Right Leg"
-	Limbs[4].Name = "Left Leg"
+NotificationTable.WallNotification = function(...)
+	coroutine.wrap(function(...)
+		local Args = {...};
 
-	local Head = IN("Part"); do
-		Head.Size = V3(2,1,1)
-		Head.TopSurface = Enum.SurfaceType.Smooth
-		Head.FormFactor = Enum.FormFactor.Symmetric
-		Head.Locked = true
-		Head.CanCollide = false
-		Head.CastShadow = not ExtraOptimization
-		Head.Transparency = 1
-		Head.Name = "Head"
-		Head.Parent = FakeRig
-	end
-	local Torso = IN("Part"); do
-		Torso.Size = V3(2, 2, 1)
-		Torso.BottomSurface = Enum.SurfaceType.Smooth
-		Torso.FormFactor = Enum.FormFactor.Symmetric
-		Torso.Locked = true
-		Torso.CanCollide = false
-		Torso.Transparency = 1
-		Torso.Name = "Torso"
-		Torso.CastShadow = not ExtraOptimization
-		Torso.Parent = FakeRig
-	end
-	FakeRoot = Torso:Clone(); do
-		FakeRoot.Transparency = 1
-		FakeRoot.Name = "HumanoidRootPart"
-		FakeRoot.CanCollide = false
-		FakeRoot.CastShadow = not ExtraOptimization
-		FakeRoot.Parent = FakeRig
-	end
+		assert(#Args < 4, "Error: Too many arguments for WallNotification | Expected 2 : 3");
+		assert(#Args > 1, "Error: Too little arguments for WallNotification | Expected 2 : 3")
 
-	CreateJoint("Neck", Torso, Head, CF(0, 1, 0, -1, 0, 0, 0, 0, 1, 0, 1, -0), CF(0, -0.5, 0, -1, 0, 0, 0, 0, 1, 0, 1, -0))
-	CreateJoint("RootJoint", FakeRoot, Torso, CF(0, 0, 0, -1, 0, 0, 0, 0, 1, 0, 1, -0), CF(0, 0, 0, -1, 0, 0, 0, 0, 1, 0, 1, -0))
-	CreateJoint("Right Shoulder", Torso, Limbs[1], CF(1, 0.5, 0, 0, 0, 1, 0, 1, -0, -1, 0, 0), CF(-0.5, 0.5, 0, 0, 0, 1, 0, 1, -0, -1, 0, 0))
-	CreateJoint("Left Shoulder", Torso, Limbs[2], CF(-1, 0.5, 0, 0, 0, -1, 0, 1, 0, 1, 0, 0), CF(0.5, 0.5, 0, 0, 0, -1, 0, 1, 0, 1, 0, 0))
-	CreateJoint("Right Hip", Torso, Limbs[3], CF(1, -1, 0, 0, 0, 1, 0, 1, -0, -1, 0, 0), CF(0.5, 1, 0, 0, 0, 1, 0, 1, -0, -1, 0, 0))
-	CreateJoint("Left Hip", Torso, Limbs[4], CF(-1, -1, 0, 0, 0, -1, 0, 1, 0, 1, 0, 0), CF(-0.5, 1, 0, 0, 0, -1, 0, 1, 0, 1, 0, 0))
+		for Index,Argument in next, Args do
+			if Index ~= 3 then
+				Args[Index] = tostring(Argument);
+			end
+		end
 
-	FakeHumanoid = IN("Humanoid"); do
-		FakeHumanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
-		FakeHumanoid.Parent = FakeRig
-	end
-	local Animator = IN("Animator"); do
-		Animator.Parent = FakeHumanoid
-	end
-	local HumanoidDescription = IN("HumanoidDescription"); do
-		HumanoidDescription.Parent = FakeHumanoid
-	end
-	local HeadMesh = IN("SpecialMesh") do
-		HeadMesh.Scale = V3(1.25, 1.25, 1.25)
-		HeadMesh.Parent = Head
-	end
-	local Face = IN("Decal"); do
-		Face.Name = "face"
-		Face.Texture = "rbxasset://textures/face.png"
-		Face.Transparency = 1
-		Face.Parent = Head
-	end
-	local Animate = IN("LocalScript"); do
-		Animate.Name = "Animate" -- Later
-		Animate.Parent = FakeRig
-	end
-	local Health = IN("Script"); do -- not neccessary to fill
-		Health.Name = "Health"
-		Health.Parent = FakeRig
-	end
+		if (#Args == 2) then
+			Args[3] = CreateWallArgs();
+		end
 
-	FakeRig.Name = "𝔾𝕖𝕝𝕒𝕥𝕖𝕜ℝ𝕒𝕨"..tostring(game.PlaceId)
-	FakeRig.PrimaryPart = Head
-	FakeRig.Parent = Workspace:FindFirstChildOfClass("Terrain") or Workspace
-	FakeRoot.CFrame = RootPart.CFrame * CF(0, 5, 0)
+		Args[4] = CreateWallArgs();
 
-	Attachments[1].Name = "FaceCenterAttachment"
-	Attachments[1].Position = V3(0, 0, 0)
-	Attachments[2].Name = "FaceFrontAttachment"
-	Attachments[2].Position = V3(0, 0, -0.6)
-	Attachments[3].Name = "HairAttachment"	
-	Attachments[3].Position = V3(0, 0.6, 0)
-	Attachments[4].Name = "HatAttachment"
-	Attachments[4].Position = V3(0, 0.6, 0)
-	Attachments[5].Name = "RootAttachment"
-	Attachments[5].Position = V3(0, 0, 0)
-	Attachments[6].Name = "RightGripAttachment"
-	Attachments[6].Position = V3(0, -1, 0)
-	Attachments[7].Name = "RightShoulderAttachment"
-	Attachments[7].Position = V3(0, 1, 0)
-	Attachments[8].Name = "LeftGripAttachment"
-	Attachments[8].Position = V3(0, -1, 0)
-	Attachments[9].Name = "LeftShoulderAttachment"
-	Attachments[9].Position = V3(0, 1, 0)
-	Attachments[10].Name = "RightFootAttachment"
-	Attachments[10].Position = V3(0, -1, 0)
-	Attachments[11].Name = "LeftFootAttachment"
-	Attachments[11].Position = V3(0, -1, 0)
-	Attachments[12].Name = "BodyBackAttachment"
-	Attachments[12].Position = V3(0, 0, 0.5)
-	Attachments[13].Name = "BodyFrontAttachment"
-	Attachments[13].Position = V3(0, 0, -0.5)
-	Attachments[14].Name = "LeftCollarAttachment"
-	Attachments[14].Position = V3(-1, 1, 0)
-	Attachments[15].Name = "NeckAttachment"
-	Attachments[15].Position = V3(0, 1, 0)
-	Attachments[16].Name = "RightCollarAttachment"
-	Attachments[16].Position = V3(1, 1, 0)
-	Attachments[17].Name = "WaistBackAttachment"
-	Attachments[17].Position = V3(0, -1, 0.5)
-	Attachments[18].Name = "WaistCenterAttachment"
-	Attachments[18].Position = V3(0, -1, 0)
-	Attachments[19].Name = "WaistFrontAttachment"
-	Attachments[19].Position = V3(0, -1, -0.5)
-	Attachments[1].Parent = Head
-	Attachments[2].Parent = Head
-	Attachments[3].Parent = Head
-	Attachments[4].Parent = Head
-	Attachments[5].Parent = FakeRoot
-	Attachments[6].Parent = Limbs[1]
-	Attachments[7].Parent = Limbs[1]
-	Attachments[8].Parent = Limbs[2]
-	Attachments[9].Parent = Limbs[2]
-	Attachments[10].Parent = Limbs[3]
-	Attachments[11].Parent = Limbs[4]
-	for i = 0,7 do Attachments[12 + i].Parent = Torso end
+		if (type(Args[3]) ~= "table") then
+			warn("Settings table malformed, please make sure you have the exact table copied! { ARG4_INVALID_TABLE }");
+			Args[3] = CreateWallArgs();
+		end
 
-	FakeRigDescendants = FakeRig:GetDescendants()
-
-	for _, Accessory in pairs(CharDescendants) do
-		if Accessory:IsA("Accessory") then
-			TI(Hats, Accessory:FindFirstChild("Handle"))
-
-			local FakeAccessory = Accessory:Clone()
-			local Handle = FakeAccessory:WaitForChild("Handle")
-			local Attachment = Handle:FindFirstChildOfClass("Attachment")
-			pcall(function() Handle:FindFirstChildOfClass("Weld"):Destroy() end)
-			local Weld = IN("Weld")
-			Weld.Name = "AccessoryWeld"
-			Weld.Part0 = Handle
-
-			if Attachment then
-				Weld.C0 = Attachment.CFrame
-				Weld.C1 = FakeRig:FindFirstChild(tostring(Attachment), true).CFrame
-				Weld.Part1 = FakeRig:FindFirstChild(tostring(Attachment), true).Parent
+		for Property, Value in next, Args[3] do
+			if type(Value) == "table" then
+				for SubProperty, SubValue in next, Value do
+					Args[4][Property][SubProperty] = SubValue;
+				end
 			else
-				Weld.Part1 = Head
-				Weld.C1 = CF(0, Head.Size.Y / 2, 0) * FakeAccessory.AttachmentPoint:Inverse()
+				Args[4][Property] = Value
 			end
-			Handle.CFrame = Weld.Part1.CFrame * Weld.C1 * Weld.C0:Inverse()
-			Handle.Transparency = 1
+		end
 
-			Weld.Parent = Handle
-			FakeAccessory.Parent = FakeRig
 
-			local CachedAccessory = FakeAccessory:Clone()
-			CachedAccessory.Parent = Global.ReanimateData.HatCache
+		local NotifFrame = NotificationTable.CreateWallNotification(Args[1], Args[2], Args[4]);
+
+		NotificationTable.InsertWallNotification(NotifFrame[1], NotifFrame[2], NotifFrame[3]);
+	end)(...)
+end
+
+NotificationTable.ClearOverride = function()
+	for _, Folder in next, game:GetService("CoreGui"):FindFirstChild("RobloxGui"):GetChildren() do
+		if Folder.Name:match("NotificationFolder") or Folder.Name:match("WallNotificationFolder") then
+			Folder:Destroy();
+		end
+	end
+	for _, Folder in next, game:GetService("Players").LocalPlayer.PlayerGui:GetChildren() do
+		if Folder.Name:match("NotificationFolder") or Folder.Name:match("WallNotificationFolder") then
+			Folder:Destroy();
 		end
 	end
 end
 
-do -- [[ Hat Alignment ]] --
-	local DynamicalVelocityEnabled = ReanimSettings.DynamicalVelocity
-	local OsClock = os.clock
-	local Random = math.random
-	local Rad = math.rad
-	local Sin = math.sin
-
-	local function GetHatFromId(AccessoryID, Check)
-		for _, Target in pairs(CharDescendants) do
-			if Target:IsA("Accessory") then
-				local Handle = Target:FindFirstChild("Handle")
-				local Mesh = Handle:FindFirstChild("SpecialMesh") or Handle:FindFirstChild("Mesh") or Handle
-				local PropertyName = Check and "MeshId" or pcall(function() Mesh.TextureID = Mesh.TextureID end) and "TextureID" or "TextureId"
-				if (Mesh[PropertyName] == AccessoryID) or (Mesh[PropertyName] == "rbxassetid://"..AccessoryID) then
-					table.remove(Hats, table.find(Hats, Target.Handle))
-					FakeRig:FindFirstChild(Target.Name):Destroy()
-					return Handle
-				end
-			end
-		end
-	end
-
-	local function Randomizer(Value)
-		return tonumber(Value..".".. Random(0, 9).. Random(0, 9))
-	end
-	local function GetMass(Part)
-		return (Part.Size.X + Part.Size.Y + Part.Size.Z) / (Part.Size.Magnitude / 4.3219)
-	end
-
-	local function PullVelocity(Part0, Part1)
-		if Part0 and Part1 then
-			local Velocity = Part1.Velocity
-			local Mass = GetMass(Part0)	
-			Part0.Velocity = not DynamicalVelocityEnabled and V3(Randomizer(-23), 0, Randomizer(-23)) or V3(Velocity.X * Mass, Randomizer(-27), Velocity.Z * Mass)
-		end
-	end
-	local function LinkParts(Part0, Part1, CFrame)
-		if Part0 and Part1 and isnetworkowner(Part0) then
-			Part0.RotVelocity = V3_010*Sin(OsClock()*29)
-			Part0.CFrame = Part1.CFrame * CFrame * AntiSleep
-		end
-	end
-
-	local DefinedHats = ReanimSettings.DefinedHats
-
-	local FakeTorso = FakeRig:WaitForChild("Torso")
-	local FakeRA = FakeRig:WaitForChild("Right Arm")
-	local FakeLA = FakeRig:WaitForChild("Left Arm")
-	local FakeRL = FakeRig:WaitForChild("Right Leg")
-	local FakeLL = FakeRig:WaitForChild("Left Leg")
-
-	local Torso = GetHatFromId(DefinedHats['Torso1'][1], DefinedHats['Torso1'][4])
-	local TorsoAlt = GetHatFromId(DefinedHats['Torso2'][1], DefinedHats['Torso2'][4])
-	local LeftArm = GetHatFromId(DefinedHats['Left Arm'][1], DefinedHats['Left Arm'][4])
-	local RightArm = GetHatFromId(DefinedHats['Right Arm'][1], DefinedHats['Right Arm'][4])
-	local LeftLeg = GetHatFromId(DefinedHats['Left Leg'][1], DefinedHats['Left Leg'][4])
-	local RightLeg = GetHatFromId(DefinedHats['Right Leg'][1], DefinedHats['Right Leg'][4])
-
-	local TorsoCF = DefinedHats['Torso1'][2] * DefinedHats['Torso1'][3]
-	local TorsoAltCF = DefinedHats['Torso2'][2] * DefinedHats['Torso2'][3]
-	local LeftArmCF = DefinedHats['Left Arm'][2] * DefinedHats['Left Arm'][3]
-	local RightArmCF = DefinedHats['Right Arm'][2] * DefinedHats['Right Arm'][3]
-	local LeftLegCF = DefinedHats['Left Leg'][2] * DefinedHats['Left Leg'][3]
-	local RightLegCF = DefinedHats['Right Leg'][2] * DefinedHats['Right Leg'][3]
-
-	fspawn(function()
-		repeat fwait() until ReadyToAlign == true
-		TI(Events, Heartbeat:Connect(function()
-			PullVelocity(Torso, FakeTorso); LinkParts(Torso, FakeTorso, TorsoCF)
-			PullVelocity(LeftArm, FakeLA); LinkParts(LeftArm, FakeLA, LeftArmCF)
-			PullVelocity(RightArm, FakeRA); LinkParts(RightArm, FakeRA, RightArmCF)
-			PullVelocity(LeftLeg, FakeLL); LinkParts(LeftLeg, FakeLL, LeftLegCF)
-			PullVelocity(RightLeg, FakeRL); LinkParts(RightLeg, FakeRL, RightLegCF)
-
-			if TorsoAlt and TorsoAlt.Parent then
-				PullVelocity(TorsoAlt, FakeTorso); LinkParts(TorsoAlt, FakeTorso, TorsoAltCF)
-			end
-
-			if FlingPart then
-				PullVelocity(FlingPart, FakeRoot)
-				if not Global.ReanimateData.FlingEnabled then
-					LinkParts(FlingPart, FakeRoot, CF(0, -1.5, 0))
-				end
-			end
-
-			for i, Hat in pairs(Hats) do
-				if Hat and Hat.Parent and FakeRig:FindFirstChild(Hat.Parent.Name) then
-					local HatTo = FakeRig:FindFirstChild(Hat.Parent.Name).Handle
-					PullVelocity(Hat, HatTo)
-					LinkParts(Hat, HatTo, CF())
-				end
-			end
-		end))
-	end)
-end
-
-do -- [[ Loading Reanimation ]] --
-	if not ReanimSettings.KeepCharacter then
-		local Random = math.random
-		local TempEvent; TempEvent = Heartbeat:Connect(function()
-			RootPart.CFrame = CFrameOffset
-			for i, Hat in pairs(Hats) do
-				Hat.Velocity = V3(-50, 500, -50)
-			end
-		end)
-
-		FakeRoot.CFrame = CFrameOffset + V3(10, 0, 0)
-
-		fspawn(function()
-			repeat fwait() until not Character:FindFirstChild("Head")
-			repeat fwait() until not Character:FindFirstChild("HumanoidRootPart")
-			fwait(1.5)
-			TempEvent:Disconnect()
-			FakeRoot.Anchored = false
-
-			FakeRoot.Velocity = V3()
-			FakeRoot.CFrame = SavedCFrame * CF(0, 5, 0)
-
-			NoclipStatus = ReanimSettings.NoClip
-			FakeHumanoid:ChangeState(2)
-			FakeHumanoid:ChangeState(7)
-		end)
-	end
-
-	FakeRoot.Anchored = true
-	Client.Character = nil
-	Client.Character = FakeRig
-	fwait(WaitTime)
-
-	RootPart.Velocity = V3()
-	Character.Parent = FakeRig
-	Character:BreakJoints()
-	Camera.CameraSubject = FakeHumanoid
-	ReadyToAlign = true
-
-	fwait(0.75)
-	if ReanimSettings.KeepCharacter then
-		FakeRoot.Anchored = false
-		FakeRoot.CFrame = FakeRoot.CFrame * CF(0, 5, 0)
-		FakeRoot.Velocity = V3()
-
-		FakeHumanoid:ChangeState(2)
-		FakeHumanoid:ChangeState(7)
-		fdelay(1.5, function()
-			NoclipStatus = ReanimSettings.NoClip
-		end)
-	end
-end
-
-do -- [[ Reset System ]] --
-	local function ClearVariables()
-		Global.ReanimateData.ScriptStopped = true
-		Global.ReanimateData.FlingEnabled = false
-		Global.ReanimateData.FlingPart = nil
-		Global.ReanimateData.HatCache:Destroy()
-		for _, GlobalSignal in pairs(Global.ReanimateData.Connections) do
-			GlobalSignal:Disconnect()
-		end
-
-		fdelay(0.25, function()
-			Global.ReanimateData.ScriptStopped = false
-		end)
-	end
-
-	FakeHumanoid.Died:Once(function()
-		for _, Signal in pairs(Events) do
-			Signal:Disconnect()
-		end
-
-		ClearVariables()
-		Client.Character = Character
-		Character.Parent = Workspace
-
-		if FakeRig then FakeRig:Destroy() end
-		Character:BreakJoints()
-	end)
-
-	TI(Events, Character:GetPropertyChangedSignal("Parent"):Connect(function(Parent)
-		if Parent == nil then
-			for _, Signal in pairs(Events) do
-				Signal:Disconnect()
-			end
-
-			ClearVariables()
-			if FakeRig then FakeRig:Destroy() end
-		end
-	end))
-end
-
-do -- [[ Finishing Touches ]] --
-	if ReanimSettings.NoClip then
-		TI(Events, Stepped:Connect(function()
-			for _, Part in pairs(FakeRigDescendants) do
-				if NoclipStatus and Part and Part.Parent and Part:IsA("BasePart") then
-					Part.CanCollide = false
-					Part.CanTouch = false
-					Part.CanQuery = false
-				end
-			end
-		end))
-	end
-
-	if ReanimSettings.Animations then
-		loadstring(game:HttpGet("https://raw.githubusercontent.com/pacfcporg/No/main/file.txt"))()
-	end
-
-	fwait(1)
-
-	local Credit = IN("Message")
-	Credit.Text = [[Reanimation Loaded! If something fails try again. 
-	https://discord.gg/A7VexVaZDA | Version: 1.1.1
-	Made by Gelatek, Lay and TimedMarch]]
-	Credit.Parent = workspace.Camera
-	fdelay(5, function()
-		Credit:Destroy()
-	end)
-end
+return NotificationTable;
